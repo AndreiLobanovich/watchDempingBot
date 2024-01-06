@@ -5,3 +5,5 @@ __pycache__/
 **/__pycache/
 *.prof
 logfiles
+log.txt
+chat_ids_to_post_to

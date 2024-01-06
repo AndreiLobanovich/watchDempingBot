@@ -16,7 +16,7 @@ source "$SCRIPT_DIR/venv/bin/activate"
 pip install -r "$SCRIPT_DIR/requirements.txt"
 
 # Добавление задачи в crontab
-(crontab -l 2>/dev/null; echo "* * * * * cd $SCRIPT_DIR && $SCRIPT_DIR/venv/bin/python $SCRIPT_DIR/main.py >> $SCRIPT_DIR/log.txt 2>&1") | crontab -
+(crontab -l 2>/dev/null; echo "0 */2 * * * cd $SCRIPT_DIR && $SCRIPT_DIR/venv/bin/python $SCRIPT_DIR/main.py >> $SCRIPT_DIR/log.txt 2>&1") | crontab -
 
 # Деактивация виртуального окружения
 deactivate
