@@ -1,5 +1,4 @@
-from Watch import Watch
-from utils import Origin
+from utils import Origin, Watch
 
 
 class WatchSet:
@@ -31,4 +30,3 @@ class WatchSet:
             if other_list_lower:
                 demping_cases.update({home: other_list_lower})
         return demping_cases
-

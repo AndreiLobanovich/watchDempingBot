@@ -1,7 +1,13 @@
 import json
 import os
+import re
 from enum import Enum, auto
+
+import asyncio
+from lxml import etree as ET
+
 import requests
+from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 
 
@@ -13,6 +19,33 @@ class Origin(Enum):
 class Website(Enum):
     HOME = 'HOME_SITE'
     OTHER = 'OTHER_SITE'
+
+
+class Watch:
+    brand: str = ''
+    ref: str = ''
+    price: str = 0
+    origin: Origin | None = None
+    link: str = ''
+    url: str
+
+    def is_set(self):
+        return self.brand != '' and self.ref != '' and self.price != 0
+
+    def __eq__(self, other: 'Watch'):
+        return self.ref == other.ref
+
+    def __hash__(self):
+        return hash(self.ref)
+
+    def __repr__(self):
+        return self.ref
+
+    def __str__(self):
+        return f'{self.ref}: {self.price}$'
+
+
+
 
 
 def get_dollar_rate():
@@ -52,3 +85,49 @@ def send_telegram_message(chat_id, message):
         "text": message
     }
     requests.post(url, data=data)
+
+
+async def fetch_watch_details(session: ClientSession, watch_url: str, semaphore: asyncio.Semaphore) -> Watch:
+    async with semaphore:
+        async with session.get(f'https://lombard-perspectiva.ru{watch_url}') as response:
+            try:
+                text = await response.text()
+                watch_page = ET.HTML(text)
+                watch = Watch()
+                watch.ref = watch_page.xpath(".//div[contains(@class, 'text-gray flex-shrink-1')]")[0].text.split()[1]
+                watch.brand = ' '.join(watch_page.xpath(".//div[contains(@class, 'catalog-item--brand-title flex-shrink-1 text-spectral')]")[0].text.split())
+                watch.price = int(re.sub(r'\D', '', watch_page.xpath(".//p[contains(@class, 'item-price--text')]")[0].text))
+                watch.origin = Origin.OTHER
+                watch.url = f'https://lombard-perspectiva.ru{watch_url}'
+                return watch
+            except:
+                return Watch()
+
+
+async def process_watches(urls):
+    tasks = []
+    semaphore = asyncio.Semaphore(10)
+    async with ClientSession() as session:
+        for watch_url in urls:
+            task = asyncio.create_task(fetch_watch_details(session, watch_url, semaphore))
+            tasks.append(task)
+        watches = await asyncio.gather(*tasks)
+        return watches
+
+
+def get_watch_from_home_item(home_item):
+    watch = Watch()
+    watch_description = home_item.find('Description').text
+
+    brand_search = re.search(r'<p><strong>(.*?)</strong><br></p>',watch_description)
+    brand = brand_search.group(1) if brand_search else 'unknown brand'
+
+    ref_search = re.search(r'<p>Ref: (.*?)</p>', watch_description)
+    ref = ref_search.group(1) if ref_search else ''
+    watch.url = home_item.find('Url').text
+    try:
+        price = int(home_item.find('PriceUsd').text)
+    except AttributeError:
+        price = 0
+    watch.brand, watch.ref, watch.price, watch.origin = brand, ref, price, Origin.HOME
+    return watch
