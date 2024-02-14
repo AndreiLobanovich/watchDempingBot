@@ -36,9 +36,10 @@ for watch_raw in home_items:
 demping_cases = watch_set.get_demping_cases()
 message = ''
 for i, (our, their) in enumerate(demping_cases.items()):
-    message += (f'{i + 1}) [{our.brand} | {our.ref}] {our.price} -> {their[0].price}\n'
-                f'{our.url}\n'
-                f'{their[0].url}\n\n')
-
-for chat_id in update_chat_ids():
-    send_telegram_message(chat_id, message)
+    for chat_id in update_chat_ids():
+        send_telegram_message(
+            chat_id,
+            f'{i + 1}) [{our.brand} | {our.ref}] {our.price} -> {their[0].price}\n'
+            f'{our.url}\n'
+            f'{their[0].url}'
+        )
